@@ -116,13 +116,13 @@ yolo_model_net = None
 known_encoding = None
 
 if HAS_VISION:
-    mp_hands = mp.solutions.hands
+    from mediapipe.python.solutions import hands as mp_hands
     hands_detector = mp_hands.Hands(static_image_mode=False, max_num_hands=1)
     
-    mp_face_mesh = mp.solutions.face_mesh
+    from mediapipe.python.solutions import face_mesh as mp_face_mesh
     face_mesh_detector = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, refine_landmarks=True)
     
-    mp_draw = mp.solutions.drawing_utils
+    from mediapipe.python.solutions import drawing_utils as mp_draw
     yolo_model_net = YOLO('yolov8n.pt')
     
     owner_path = "owner.jpg"
