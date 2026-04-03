@@ -347,6 +347,7 @@ if __name__ == '__main__':
     port = 5000
     try:
         from pyngrok import ngrok
+        ngrok.set_auth_token("3BrHBtNHD8JXtrdlouC9zckYhBF_vbxibADFwULGWPxnqvGm")
         public_url = ngrok.connect(port).public_url
         print(f"\n========================================================")
         print(f"🌟 NGROK TUNNEL ACTIVE!")
