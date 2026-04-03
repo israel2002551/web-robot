@@ -1,0 +1,9 @@
+flask
+flask-socketio
+paho-mqtt
+opencv-python
+numpy
+mediapipe
+ultralytics
+face_recognition
+google-generativeai
