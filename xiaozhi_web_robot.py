@@ -344,4 +344,15 @@ def mqtt_connect(data):
     emit('mqtt_status', {'connected': ok, 'message': msg})
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)
+    port = 5000
+    try:
+        from pyngrok import ngrok
+        public_url = ngrok.connect(port).public_url
+        print(f"\n========================================================")
+        print(f"🌟 NGROK TUNNEL ACTIVE!")
+        print(f"🌍 Access Lisa from anywhere at: {public_url}")
+        print(f"========================================================\n")
+    except ImportError:
+        print("\n(Optional) Install 'pyngrok' (pip install pyngrok) to expose the dashboard to the public internet.\n")
+        
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
