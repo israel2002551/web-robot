@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lisa Perfect Companion</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--card:#1e293b;
+--primary:#6366f1;--primary-glow:#818cf8;--accent:#22d3ee;--accent2:#a78bfa;
+--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+--success:#10b981;--error:#ef4444;--warn:#f59e0b;
+--robot-body:#1e293b;--robot-eye:#22d3ee;--robot-mouth:#6366f1;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+.header{height:60px;background:var(--surface);border-bottom:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:space-between;padding:0 24px;z-index:10}
+.header h1{font-size:18px;font-weight:600;background:linear-gradient(135deg,var(--primary-glow),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-right{display:flex;align-items:center;gap:15px}
+.settings-btn{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:8px 16px;color:var(--text);font-size:13px;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
+.settings-btn:hover{background:rgba(99,102,241,.25);border-color:var(--primary)}
+
+.main-content{display:flex;flex:1;overflow:hidden}
+
+/* Left: Robot UI */
+.robot-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.robot-container{position:relative;width:320px;height:420px;transform:scale(0.85)}
+.robot-body{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:200px;height:220px;background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);border-radius:20px 20px 30px 30px;border:2px solid rgba(99,102,241,.3);box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05)}
+.robot-body::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;border-radius:50%;border:2px solid rgba(99,102,241,.2);box-shadow:0 0 20px rgba(99,102,241,.1)}
+.robot-neck{position:absolute;bottom:220px;left:50%;transform:translateX(-50%);width:40px;height:30px;background:linear-gradient(180deg,#334155,#1e293b);border-radius:5px}
+.robot-head{position:absolute;bottom:245px;left:50%;transform:translateX(-50%);width:180px;height:160px;background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);border-radius:80px 80px 30px 30px;border:2px solid rgba(99,102,241,.3);box-shadow:0 -10px 40px rgba(99,102,241,.1),inset 0 1px 0 rgba(255,255,255,.05);transition:transform .3s ease}
+.robot-antenna{position:absolute;bottom:400px;left:50%;transform:translateX(-50%);width:4px;height:30px;background:linear-gradient(180deg,var(--accent),transparent);border-radius:2px}
+.robot-antenna::after{content:'';position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 15px var(--accent);animation:antennaPulse 2s infinite}
+@keyframes antennaPulse{0%,100%{box-shadow:0 0 15px var(--accent)}50%{box-shadow:0 0 25px var(--accent),0 0 40px rgba(34,211,238,.3)}}
+.robot-arm{position:absolute;bottom:100px;width:30px;height:100px;background:linear-gradient(180deg,#1e293b,#0f172a);border-radius:15px;border:1px solid rgba(99,102,241,.2)}
+.robot-arm.left{left:calc(50% - 130px)}
+.robot-arm.right{right:calc(50% - 130px)}
+
+.face{position:absolute;top:25px;left:50%;transform:translateX(-50%);width:140px;height:100px}
+.eye{position:absolute;width:30px;height:34px;background:var(--robot-eye);border-radius:50%;top:15px;transition:all .3s ease;box-shadow:0 0 20px rgba(34,211,238,.5),0 0 40px rgba(34,211,238,.2)}
+.eye.left{left:15px}
+.eye.right{right:15px}
+.mouth{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:40px;height:8px;background:var(--robot-mouth);border-radius:0 0 20px 20px;transition:all .3s ease;box-shadow:0 0 15px rgba(99,102,241,.3)}
+
+/* States */
+.robot-container[data-state="idle"] .eye{animation:idleLook 4s ease-in-out infinite}
+@keyframes idleLook{0%,100%{transform:none}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.robot-container[data-state="listening"] .eye{height:40px;width:35px;box-shadow:0 0 30px rgba(34,211,238,.7);animation:listenPulse 1s ease-in-out infinite}
+.robot-container[data-state="listening"] .mouth{width:20px;height:20px;border-radius:50%;background:var(--accent)}
+@keyframes listenPulse{0%,100%{box-shadow:0 0 30px rgba(34,211,238,.7)}50%{box-shadow:0 0 50px rgba(34,211,238,.9)}}
+.robot-container[data-state="thinking"] .eye{animation:thinkBlink .6s steps(2) infinite;background:var(--accent2)}
+.robot-container[data-state="thinking"] .mouth{width:15px;height:10px;border-radius:50%;animation:thinkDots 1s infinite}
+@keyframes thinkBlink{0%,100%{height:34px}50%{height:4px}}
+@keyframes thinkDots{0%,100%{opacity:1}50%{opacity:.3}}
+.robot-container[data-state="speaking"] .mouth{animation:speak .4s ease-in-out infinite alternate;background:var(--primary-glow);border-radius:50%}
+@keyframes speak{0%{width:30px;height:15px}100%{width:45px;height:30px}}
+.robot-container[data-state="error"] .eye{background:var(--error);animation:errorFlash .3s infinite}
+.robot-container[data-state="error"] .mouth{width:35px;height:6px;border-radius:3px;background:var(--error)}
+@keyframes errorFlash{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Emotion override classes */
+.robot-container[data-emotion="sad"] .eye{height:15px;border-radius:20px 20px 0 0;top:25px;background:var(--accent2)}
+.robot-container[data-emotion="sad"] .mouth{width:30px;height:15px;border-radius:20px 20px 0 0;bottom:5px;background:var(--accent2)}
+.robot-container[data-emotion="happy"] .eye{height:15px;border-radius:0 0 20px 20px;top:10px}
+.robot-container[data-emotion="happy"] .mouth{width:50px;height:25px;border-radius:0 0 30px 30px}
+
+.robot-container.blink .eye{animation:blink .2s ease-in-out forwards}
+@keyframes blink{0%,100%{height:34px}40%{height:2px}}
+
+/* Right: Vision Feed & Controls */
+.vision-section{width:450px;background:var(--surface);border-left:1px solid rgba(99,102,241,.2);display:flex;flex-direction:column;padding:20px}
+.camera-container{width:100%;aspect-ratio:4/3;background:#000;border:2px solid var(--card);border-radius:12px;overflow:hidden;position:relative}
+#processedImage{width:100%;height:100%;object-fit:cover}
+
+/* Controls */
+.control-panel{margin-top:20px;padding:20px;background:var(--card);border-radius:12px;text-align:center}
+.audio-status{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:15px}
+.pulse-indicator{width:12px;height:12px;border-radius:50%;background:var(--success);animation:pulseMic 1.5s infinite}
+.mic-btn{padding:10px 20px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-weight:600;cursor:pointer}
+
+/* Setup Video hidden */
+#videoElement{display:none}
+#canvasElement{display:none}
+
+.status-text{margin-top:15px;font-size:14px;color:var(--text2);min-height:20px;font-weight:500;}
+.memory-badge{font-size:11px;background:rgba(167,139,250,.2);color:var(--accent2);padding:4px 8px;border-radius:10px;border:1px solid rgba(167,139,250,.3);margin-top:10px;display:none;}
+.memory-badge.active{display:inline-block}
+
+/* Settings overlay */
+.settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:100;align-items:center;justify-content:center}
+.settings-overlay.active{display:flex}
+.settings-panel{background:var(--surface);border:1px solid rgba(99,102,241,.2);border-radius:20px;width:480px;padding:32px;}
+.settings-panel h2{font-size:20px;margin-bottom:20px;color:var(--primary-glow)}
+.form-group{margin-bottom:15px}
+.form-group label{font-size:13px;color:var(--text2);display:block;margin-bottom:5px}
+.form-group input{width:100%;padding:10px;background:var(--card);border:1px solid rgba(99,102,241,.2);border-radius:8px;color:#fff}
+.btn-row{display:flex;gap:10px;margin-top:20px}
+.btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--text3)}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>👁️ Lisa Vision & Voice</h1>
+  <div class="header-right">
+    <span id="mqttStatus" style="font-size:12px;color:var(--error)">MQTT Offline</span>
+    <button class="settings-btn" onclick="document.getElementById('settingsOverlay').classList.add('active')">⚙️ Settings</button>
+  </div>
+</div>
+
+<div class="main-content">
+  <div class="robot-section">
+    <div class="robot-container" id="robotContainer" data-state="idle" data-emotion="neutral">
+      <div class="robot-antenna"></div>
+      <div class="robot-head">
+        <div class="face">
+          <div class="eye left"></div>
+          <div class="eye right"></div>
+          <div class="mouth"></div>
+        </div>
+      </div>
+      <div class="robot-neck"></div>
+      <div class="robot-body"></div>
+      <div class="robot-arm left"></div>
+      <div class="robot-arm right"></div>
+    </div>
+  </div>
+
+  <div class="vision-section">
+    <div class="camera-container">
+      <img id="processedImage" src="" alt="Camera Feed">
+    </div>
+    
+    <div class="control-panel">
+      <div class="audio-status">
+        <div class="pulse-indicator"></div>
+        <span style="font-size:14px;color:var(--success)">Wake word active: "Hey Lisa"</span>
+      </div>
+      <div class="status-text" id="statusText">Listening for wake word...</div>
+      <div class="memory-badge" id="memoryBadge">🧠 Memory Updated</div>
+      <button class="mic-btn" id="startBtn">Enable Audio Permissions</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden media elements for processing -->
+<video id="videoElement" autoplay playsinline></video>
+<canvas id="canvasElement" width="640" height="480"></canvas>
+
+<!-- Settings overlay -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-panel">
+    <h2>MQTT Settings</h2>
+    <div class="form-group"><label>Broker</label><input type="text" id="mqttBroker" placeholder="broker.hivemq.com"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="connectMqtt()">Connect</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('settingsOverlay').classList.remove('active')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const socket = io();
+const robotContainer = document.getElementById('robotContainer');
+const statusText = document.getElementById('statusText');
+const memoryBadge = document.getElementById('memoryBadge');
+const video = document.getElementById('videoElement');
+const canvas = document.getElementById('canvasElement');
+const ctx = canvas.getContext('2d');
+const processedImage = document.getElementById('processedImage');
+const startBtn = document.getElementById('startBtn');
+
+// Random Blink
+setInterval(()=>{
+  if(robotContainer.getAttribute('data-state')!=='error'){
+    robotContainer.classList.add('blink');
+    setTimeout(()=>robotContainer.classList.remove('blink'),300);
+  }
+}, 4000);
+
+// --- Vision / Camera ---
+// We keep raw camera flowing to the backend
+navigator.mediaDevices.getUserMedia({video: {width: 640, height: 480}})
+  .then(stream => {
+    video.srcObject = stream;
+    setInterval(() => {
+      if(video.readyState === video.HAVE_ENOUGH_DATA) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataURL = canvas.toDataURL('image/jpeg', 0.6);
+        socket.emit('video_frame', dataURL);
+      }
+    }, 100);
+  });
+
+socket.on('video_response', (data) => {
+  processedImage.src = data.image;
+});
+
+// --- Audio / Voice TTS & Continuous Speech Recognition ---
+let isListening = false;
+let permissionsGranted = false;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const synthesis = window.speechSynthesis;
+let recognition = null;
+
+function setupRecognition() {
+  if(!SpeechRecognition) return;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.continuous = true;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => { isListening = true; };
+  
+  recognition.onresult = (event) => {
+    // Only fetch the newest finalized result
+    const text = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+    
+    // Check for Wake word
+    if (text.includes("lisa") || text.includes("lee-suh")) {
+       let cleanCmd = text.replace(/^(hey )?lisa/, '').trim();
+       if(cleanCmd === "") cleanCmd = "hello"; // fallback
+       
+       statusText.textContent = `You: "${text}"`;
+       robotContainer.setAttribute('data-state', 'thinking');
+       
+       // Stop listening temporarily while AI speaks
+       recognition.stop();
+       socket.emit('voice_command', {text: cleanCmd});
+    } else {
+       // Ignore non-wake word babble
+       statusText.textContent = `(Ignored: "${text}")`;
+    }
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    // Auto-restart if we have permissions and AI isn't speaking
+    if(permissionsGranted && robotContainer.getAttribute('data-state') !== 'speaking') {
+       try { recognition.start(); } catch(e){}
+    }
+  };
+}
+
+setupRecognition();
+
+startBtn.addEventListener('click', () => {
+  // TTS unlock
+  const u = new SpeechSynthesisUtterance('');
+  synthesis.speak(u);
+  
+  permissionsGranted = true;
+  startBtn.style.display = 'none';
+  if(recognition) {
+    try { recognition.start(); } catch(e){}
+  }
+});
+
+// --- Backend Responses ---
+socket.on('speak_text', (data) => {
+  if(!synthesis) return;
+  
+  // Pause recognition
+  if(recognition && isListening) { recognition.stop(); }
+
+  const utterance = new SpeechSynthesisUtterance(data.text);
+  utterance.rate = 1.05;
+  
+  const voices = synthesis.getVoices();
+  const enVoice = voices.find(v => v.lang.includes('en-') && (v.name.includes('Female') || v.name.includes('Google')));
+  if(enVoice) utterance.voice = enVoice;
+
+  utterance.onstart = () => {
+    robotContainer.setAttribute('data-state', 'speaking');
+    socket.emit('speaking_started');
+    statusText.textContent = `Lisa: "${data.text}"`;
+  };
+  
+  utterance.onend = () => {
+    robotContainer.setAttribute('data-state', 'idle');
+    socket.emit('speaking_ended');
+    // Resume listening for wake word
+    if(permissionsGranted && recognition) {
+       setTimeout(()=>{ try{ recognition.start(); }catch(e){} }, 500);
+    }
+  };
+
+  synthesis.speak(utterance);
+});
+
+socket.on('memory_saved', (data) => {
+  memoryBadge.textContent = "🧠 Memory Updated: " + data.fact;
+  memoryBadge.classList.add('active');
+  setTimeout(()=>{ memoryBadge.classList.remove('active') }, 5000);
+});
+
+socket.on('emotion_update', (data) => {
+  robotContainer.setAttribute('data-emotion', data.emotion); // "sad", "happy", "neutral"
+});
+
+function connectMqtt(){
+  socket.emit('mqtt_connect', {broker: document.getElementById('mqttBroker').value});
+  document.getElementById('settingsOverlay').classList.remove('active');
+}
+
+socket.on('mqtt_status', data => {
+  const badge = document.getElementById('mqttStatus');
+  if(data.connected){
+    badge.textContent = "MQTT Connected";
+    badge.style.color = "var(--success)";
+  } else {
+    badge.textContent = "MQTT Offline";
+    badge.style.color = "var(--error)";
+  }
+});
+</script>
+</body>
+</html>
